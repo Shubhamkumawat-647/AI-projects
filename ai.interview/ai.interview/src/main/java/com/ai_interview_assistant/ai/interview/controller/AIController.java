@@ -7,7 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/api/conversations")
 public class AIController {
 
     private final AIService aiService;
@@ -16,12 +16,14 @@ public class AIController {
         this.aiService = aiService;
     }
 
-    @PostMapping("/chat")
-    public ChatResponse chat(@Valid @RequestBody ChatRequest request) {
+    @PostMapping("/{conversationId}/messages")
+    public String chat(
+            @PathVariable String conversationId,
+            @Valid @RequestBody ChatRequest request){
 
-        String response = aiService.askAI(request.getMessage());
-
-        return new ChatResponse(response);
+        return aiService.askAI(
+                conversationId,
+                request.getMessage());
 
     }
 
