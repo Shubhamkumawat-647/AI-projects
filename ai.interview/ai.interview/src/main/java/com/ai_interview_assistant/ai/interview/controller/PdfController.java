@@ -1,6 +1,7 @@
 package com.ai_interview_assistant.ai.interview.controller;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,12 +18,12 @@ public class PdfController {
         this.pdfService = pdfService;
     }
 
-    @PostMapping("/upload")
-    public String uploadPdf(
+    @PostMapping("/chunks")
+    public List<String> upload(
             @RequestParam MultipartFile file)
             throws IOException {
 
-        return pdfService.extractText(file);
+        return pdfService.extractChunks(file);
 
     }
 

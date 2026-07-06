@@ -1,6 +1,7 @@
 package com.ai_interview_assistant.ai.interview.service;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -11,17 +12,29 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class PdfService {
 
-    public String extractText(MultipartFile file) throws IOException {
+    private final ChunkService chunkService;
 
-       PDDocument document = Loader.loadPDF(file.getBytes());
+    public PdfService(ChunkService chunkService) {
 
-        PDFTextStripper stripper = new PDFTextStripper();
+        this.chunkService = chunkService;
 
-        String text = stripper.getText(document);
-
-        document.close();
-
-        return text;
-       
     }
+
+    public List<String> extractChunks(MultipartFile file)
+            throws IOException {
+
+        try (PDDocument document =
+                Loader.loadPDF(file.getBytes())) {
+
+            PDFTextStripper stripper =
+                    new PDFTextStripper();
+
+            String text = stripper.getText(document);
+
+            return chunkService.splitText(text);
+
+        }
+
+    }
+
 }
