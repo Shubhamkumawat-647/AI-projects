@@ -21,12 +21,13 @@ public class ChunkService {
 
         System.out.println("Total Chunks: " + chunks.size());
 
-        for (int i = 0; i < chunks.size(); i++) {
-            System.out.println("----------------------------------");
-            System.out.println("Chunk " + (i + 1));
-            System.out.println(chunks.get(i));
-            System.out.println("----------------------------------");
-        }
+//        for (int i = 0; i < chunks.size(); i++) {
+//            System.out.println("----------------------------------");
+//            System.out.println("Chunk " + (i + 1));
+//            System.out.println(chunks.get(i));
+//            System.out.println("----------------------------------");
+//        }
+//        
 
         return chunks;
     }

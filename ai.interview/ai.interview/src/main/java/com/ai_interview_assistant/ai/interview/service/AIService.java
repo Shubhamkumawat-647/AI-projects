@@ -11,8 +11,11 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.document.Document;
 
 import com.ai_interview_assistant.ai.interview.config.PromptConfig;
 import com.ai_interview_assistant.ai.interview.entity.ChatMessage;
@@ -26,63 +29,100 @@ public class AIService {
 
 	private final ChatModel chatModel;
 
-    private final ChatSessionRepository chatSessionRepository;
+	private final ChatSessionRepository chatSessionRepository;
 
-    private final ChatMessageRepository chatMessageRepository;
+	private final ChatMessageRepository chatMessageRepository;
+	private final VectorStore vectorStore;
 
-    public AIService(ChatModel chatModel,
-                     ChatSessionRepository chatSessionRepository,
-                     ChatMessageRepository chatMessageRepository) {
+	public AIService(ChatModel chatModel, ChatSessionRepository chatSessionRepository,
+			ChatMessageRepository chatMessageRepository, VectorStore vectorStore) {
 
-    	 this.chatModel = chatModel;
-        this.chatSessionRepository = chatSessionRepository;
-        this.chatMessageRepository = chatMessageRepository;
-    }
+		this.chatModel = chatModel;
+		this.chatSessionRepository = chatSessionRepository;
+		this.chatMessageRepository = chatMessageRepository;
+		this.vectorStore = vectorStore;
+	}
 
-    public String askAI(String conversationId,String userMessage) {
-    	
-    	ChatSession session =chatSessionRepository.findByConversationId(conversationId).orElseThrow(() ->new RuntimeException("Conversation not found"));
+	public String askAI(String conversationId, String userMessage) {
 
-    	List<ChatMessage> history =chatMessageRepository.findByChatSessionOrderByCreatedAtAsc(session);
-       
-    	List<Message> messages = new ArrayList<>();
+		ChatSession session = chatSessionRepository.findByConversationId(conversationId)
+				.orElseThrow(() -> new RuntimeException("Conversation not found"));
+
+		List<ChatMessage> history = chatMessageRepository.findByChatSessionOrderByCreatedAtAsc(session);
+
+		List<Message> messages = new ArrayList<>();
 
 //    	messages.add(new SystemMessage(PromptConfig.SYSTEM_PROMPT));
-    	
-    	for(ChatMessage chat : history){
-    	    if(chat.getRole()==MessageRole.USER){
-    	        messages.add(new UserMessage(chat.getMessage()));
-    	    }
-    	    else{
-    	    	messages.add(new AssistantMessage(chat.getMessage()));
-    	    }
-    	}
-    	messages.add(new UserMessage(userMessage));
-    	
-    	Prompt prompt =new Prompt(messages);
-    	
-    	 String response =chatModel.call(prompt).getResult().getOutput().getText();
+
+		for (ChatMessage chat : history) {
+			if (chat.getRole() == MessageRole.USER) {
+				messages.add(new UserMessage(chat.getMessage()));
+			} else {
+				messages.add(new AssistantMessage(chat.getMessage()));
+			}
+		}
+		messages.add(new UserMessage(userMessage));
+
+		Prompt prompt = new Prompt(messages);
+
+		String response = chatModel.call(prompt).getResult().getOutput().getText();
 //    	 String response = chatClient
 //    		        .prompt(prompt)
 //    		        .call()
 //    		        .content();
 
-        ChatMessage userChat = new ChatMessage();
-        userChat.setRole(MessageRole.USER);
-        userChat.setMessage(userMessage);
-        userChat.setCreatedAt(LocalDateTime.now());
-        userChat.setChatSession(session);
-        chatMessageRepository.save(userChat);
-        
+		ChatMessage userChat = new ChatMessage();
+		userChat.setRole(MessageRole.USER);
+		userChat.setMessage(userMessage);
+		userChat.setCreatedAt(LocalDateTime.now());
+		userChat.setChatSession(session);
+		chatMessageRepository.save(userChat);
 
-        ChatMessage aiChat = new ChatMessage();
-        aiChat.setRole(MessageRole.ASSISTANT);
-        aiChat.setMessage(response);
-        aiChat.setCreatedAt(LocalDateTime.now());
-        aiChat.setChatSession(session);
-        chatMessageRepository.save(aiChat);
-        return response;
+		ChatMessage aiChat = new ChatMessage();
+		aiChat.setRole(MessageRole.ASSISTANT);
+		aiChat.setMessage(response);
+		aiChat.setCreatedAt(LocalDateTime.now());
+		aiChat.setChatSession(session);
+		chatMessageRepository.save(aiChat);
+		return response;
 
-    }
+	}
+	
+	
+	
+
+	public String askFromDocument(String question) {
+
+		SearchRequest request = SearchRequest.builder().query(question).topK(3).build();
+
+		List<Document> docs = vectorStore.similaritySearch(request);
+
+		StringBuilder context = new StringBuilder();
+
+		for (Document doc : docs) {
+
+			context.append(doc.getText());
+
+			context.append("\n");
+
+		}
+		
+
+		String messages = """
+
+				Answer only from the context.
+
+				Context:
+				%s
+
+				Question:
+				%s
+
+				""".formatted(context, question);
+		Prompt prompt = new Prompt(messages);
+
+		return chatModel.call(prompt).getResult().getOutput().getText();
+
+	}
 
 }
