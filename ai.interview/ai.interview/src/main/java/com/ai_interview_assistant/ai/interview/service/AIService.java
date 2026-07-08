@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -18,6 +19,8 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.document.Document;
 
 import com.ai_interview_assistant.ai.interview.config.PromptConfig;
+import com.ai_interview_assistant.ai.interview.dto.RagRequest;
+import com.ai_interview_assistant.ai.interview.dto.RagResponse;
 import com.ai_interview_assistant.ai.interview.entity.ChatMessage;
 import com.ai_interview_assistant.ai.interview.entity.ChatSession;
 import com.ai_interview_assistant.ai.interview.entity.MessageRole;
@@ -91,38 +94,116 @@ public class AIService {
 	
 	
 
-	public String askFromDocument(String question) {
+//	public String askFromDocument(String question) {
+//
+//		SearchRequest request = SearchRequest.builder().query(question).topK(3).build();
+//
+//		List<Document> docs = vectorStore.similaritySearch(request);
+//
+//		StringBuilder context = new StringBuilder();
+//
+//		for (Document doc : docs) {
+//
+//			context.append(doc.getText());
+//
+//			context.append("\n");
+//
+//		}
+//		
+//
+//		String messages = """
+//
+//				Answer only from the context.
+//
+//				Context:
+//				%s
+//
+//				Question:
+//				%s
+//
+//				""".formatted(context, question);
+//		Prompt prompt = new Prompt(messages);
+//
+//		return chatModel.call(prompt).getResult().getOutput().getText();
+//
+//	}
+	public RagResponse askFromDocument(RagRequest request) {
 
-		SearchRequest request = SearchRequest.builder().query(question).topK(3).build();
+	    long start = System.currentTimeMillis();
 
-		List<Document> docs = vectorStore.similaritySearch(request);
+	    System.out.println(request.getQuestion());
+	    
+	    SearchRequest searchRequest = SearchRequest.builder()
+	            .query(request.getQuestion())
+	            .topK(5)
+	            .filterExpression(
+	                    "fileName == '" + request.getFileName() + "'")
+	            .build();
 
-		StringBuilder context = new StringBuilder();
+	    List<Document> documents =
+	            vectorStore.similaritySearch(searchRequest);
 
-		for (Document doc : docs) {
+	    RagResponse response = new RagResponse();
 
-			context.append(doc.getText());
+	    if (documents == null || documents.isEmpty()) {
 
-			context.append("\n");
+	        response.setAnswer("No relevant information found.");
+	        response.setSources(List.of());
+	        response.setRetrievedChunks(0);
+	        response.setResponseTime(
+	                System.currentTimeMillis() - start);
 
-		}
-		
+	        return response;
+	    }
 
-		String messages = """
+	    StringBuilder context = new StringBuilder();
 
-				Answer only from the context.
+	    for (Document doc : documents) {
 
-				Context:
-				%s
+	        context.append(doc.getText())
+	               .append("\n\n");
 
-				Question:
-				%s
+	    }
 
-				""".formatted(context, question);
-		Prompt prompt = new Prompt(messages);
+	    String promptText = PromptConfig.RagPrompt.formatted(
 
-		return chatModel.call(prompt).getResult().getOutput().getText();
+	            "No Previous Conversation",
+
+	            context.toString(),
+
+	            request.getQuestion()
+
+	    );
+
+	    Prompt prompt = new Prompt(promptText);
+
+	    String answer = chatModel.call(prompt)
+	            .getResult()
+	            .getOutput()
+	            .getText();
+
+	    List<String> sources = documents.stream()
+
+	            .map(doc ->
+
+	                    doc.getMetadata().get("fileName")
+
+	                            + " Page "
+
+	                            + doc.getMetadata().get("page"))
+
+	            .collect(Collectors.toList());
+
+	    response.setAnswer(answer);
+
+	    response.setSources(sources);
+
+	    response.setRetrievedChunks(documents.size());
+
+	    response.setResponseTime(
+	            System.currentTimeMillis() - start);
+
+	    return response;
 
 	}
-
 }

@@ -1,25 +1,17 @@
 package com.ai_interview_assistant.ai.interview.dto;
 
+import lombok.Data;
+
+@Data
 public class RagRequest {
 
+    // User question
     private String question;
 
+    // PDF file name stored in Vector Store metadata
     private String fileName;
 
-    public String getQuestion() {
-        return question;
-    }
-
-    public void setQuestion(String question) {
-        this.question = question;
-    }
-
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
+    // Conversation ID (Day 61/62)
+    private String conversationId;
 
 }
