@@ -1,0 +1,18 @@
+package com.aiagent.enterprise_ai_agent.config.DTO;
+
+import java.time.LocalDateTime;
+
+import com.aiagent.enterprise_ai_agent.entity.Role;
+
+import lombok.Data;
+
+@Data
+public class MessageResponse {
+
+    private Role role;
+
+    private String content;
+
+    private LocalDateTime createdAt;
+
+}
