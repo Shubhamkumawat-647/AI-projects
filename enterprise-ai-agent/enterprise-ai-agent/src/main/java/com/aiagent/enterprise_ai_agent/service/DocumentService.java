@@ -1,6 +1,7 @@
 package com.aiagent.enterprise_ai_agent.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,8 @@ import com.aiagent.enterprise_ai_agent.entity.DocumentStatus;
 import com.aiagent.enterprise_ai_agent.entity.User;
 import com.aiagent.enterprise_ai_agent.repository.DocumentRepository;
 import com.aiagent.enterprise_ai_agent.util.PdfUtil;
+import org.springframework.core.io.Resource;
+
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,24 +73,13 @@ public class DocumentService {
         List<String> chunks =
                 chunkService.split(text);
 
-        vectorStoreService.save(
 
-                chunks,
-
-                currentUser.getId(),
-
-                conversation.getConversationId(),
-
-                storedFileName,
-
-                "PDF"
-
-        );
 
         DocumentEntity document =
                 new DocumentEntity();
 
         document.setUser(currentUser);
+        document.setFileId(UUID.randomUUID().toString());
 
         document.setConversation(conversation);
 
@@ -109,6 +101,20 @@ public class DocumentService {
                 DocumentStatus.READY);
 
         documentRepository.save(document);
+        vectorStoreService.save(
+
+                chunks,
+
+                currentUser.getId(),
+
+                conversation.getConversationId(),
+
+                storedFileName,
+
+                "PDF",
+                document.getFileId()
+
+        );
 
         log.info(
                 "Document uploaded successfully {}",
@@ -183,40 +189,55 @@ public class DocumentService {
     /**
      * Soft delete document
      */
-    public void deleteDocument(String fileId) throws Exception {
+    @Transactional
+    public void deleteDocument(String fileId) {
 
-        User currentUser = userService.getCurrentUser();
+        User currentUser =
+                userService.getCurrentUser();
 
         DocumentEntity document =
                 documentRepository
-                        .findByFileId(fileId)
+                        .findByFileIdAndStatusNot(
+                                fileId,
+                                DocumentStatus.DELETED)
                         .orElseThrow(() ->
-                                new RuntimeException("Document not found."));
+                                new RuntimeException(
+                                        "Document not found"));
 
-        validateDocumentOwner(
-                document,
-                currentUser);
+        if (!document.getUser()
+                .getId()
+                .equals(currentUser.getId())) {
 
-        document.setStatus(DocumentStatus.DELETED);
-
-        documentRepository.save(document);
-
-        try {
-
-            storageService.delete(document.getFileName());
-
-        } catch (Exception ex) {
-
-            log.error(
-                    "Unable to delete physical file : {}",
-                    document.getFileName(),
-                    ex);
+            throw new RuntimeException(
+                    "Unauthorized access.");
 
         }
 
-        log.info(
-                "Document deleted successfully : {}",
-                fileId);
+        /*
+         * Delete vectors
+         */
+        vectorStoreService.deleteByFileId(fileId);
+
+        /*
+         * Soft delete
+         */
+        document.setStatus(
+                DocumentStatus.DELETED);
+
+        documentRepository.save(document);
+
+        /*
+         * Update conversation
+         */
+        Conversation conversation =
+                document.getConversation();
+
+        if (conversation != null) {
+            conversation.setDocumentCount(Math.max(0,conversation.getDocumentCount() - 1));
+
+            conversationService.save(conversation);
+
+        }
 
     }
     /**
@@ -282,6 +303,29 @@ public class DocumentService {
                     "Document already uploaded.");
 
         }
+
+    }
+    
+    public Resource downloadDocument(String fileId)
+            throws Exception {
+
+        User currentUser =
+                userService.getCurrentUser();
+
+        DocumentEntity document =
+                documentRepository
+                        .findByFileIdAndStatusNot(
+                                fileId,
+                                DocumentStatus.DELETED)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Document not found"));
+
+        validateDocumentOwner(
+                document,
+                currentUser);
+
+        return storageService.loadAsResource(document.getFileName());
 
     }
 

@@ -54,5 +54,9 @@ public interface DocumentRepository
             User user,
             DocumentStatus status
     );
+    
+    Optional<DocumentEntity> findByFileIdAndStatusNot(
+            String fileId,
+            DocumentStatus status);
 
 }

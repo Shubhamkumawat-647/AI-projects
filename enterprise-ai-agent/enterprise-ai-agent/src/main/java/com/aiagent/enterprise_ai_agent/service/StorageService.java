@@ -1,6 +1,7 @@
 package com.aiagent.enterprise_ai_agent.service;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Path;
 
 import org.springframework.core.io.Resource;
@@ -29,5 +30,10 @@ public interface StorageService {
      * Get absolute file path.
      */
     Path getPath(String fileName);
+
+	Resource loadAsResource(String fileName) throws MalformedURLException;
+    
+    
+    
 
 }

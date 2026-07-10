@@ -2,6 +2,7 @@ package com.aiagent.enterprise_ai_agent.service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -96,6 +97,31 @@ public class LocalStorageService implements StorageService {
     public Path getPath(String fileName) {
 
         return root.resolve(fileName);
+
+    }
+    
+    public Path load1(String fileName) {
+
+        return root.resolve(fileName);
+
+    }
+
+    @Override
+    public Resource loadAsResource(String fileName) throws MalformedURLException {
+
+        Path file = load1(fileName);
+
+        Resource resource =
+                new UrlResource(file.toUri());
+
+        if (resource.exists() || resource.isReadable()) {
+
+            return resource;
+
+        }
+
+        throw new RuntimeException(
+                "File not found : " + fileName);
 
     }
 

@@ -1,0 +1,72 @@
+version: '3.9'
+
+services:
+
+postgres:
+image: pgvector/pgvector:pg17
+
+```
+container_name: postgres-db
+
+restart: always
+
+environment:
+  POSTGRES_DB: enterprise-ai-agent
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+
+ports:
+  - "5433:5432"
+
+volumes:
+  - postgres_data:/var/lib/postgresql/data
+```
+
+ollama:
+image: ollama/ollama
+
+```
+container_name: ollama
+
+restart: always
+
+ports:
+  - "11434:11434"
+
+volumes:
+  - ollama_data:/root/.ollama
+```
+
+enterprise-ai-agent:
+build: .
+
+```
+container_name: enterprise-ai-agent
+
+restart: always
+
+depends_on:
+  - postgres
+  - ollama
+
+ports:
+  - "8082:8082"
+
+environment:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/enterprise-ai-agent
+  SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_DATASOURCE_PASSWORD: postgres
+
+  SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+
+  JWT_SECRET: ThisIsMySuperSecretKeyForEnterpriseAIAgentProject123456789
+
+volumes:
+  - ./uploads:/app/uploads
+```
+
+volumes:
+
+postgres_data:
+
+ollama_data:

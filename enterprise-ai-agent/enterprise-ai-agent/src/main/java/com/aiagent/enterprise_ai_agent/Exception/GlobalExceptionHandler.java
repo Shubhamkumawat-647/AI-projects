@@ -2,53 +2,84 @@ package com.aiagent.enterprise_ai_agent.Exception;
 
 import java.time.LocalDateTime;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.aiagent.enterprise_ai_agent.config.DTO.ApiResponse;
+import com.aiagent.enterprise_ai_agent.config.DTO.ErrorResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Object>> handleNotFound(
-            ResourceNotFoundException ex){
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntimeException(
+            RuntimeException ex,
+            HttpServletRequest request) {
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.builder()
+        log.error("Runtime Exception", ex);
+
+        ErrorResponse response =
+                ErrorResponse.builder()
                         .success(false)
+                        .status(HttpStatus.BAD_REQUEST.value())
+                        .error("Bad Request")
                         .message(ex.getMessage())
-                        .data(null)
+                        .path(request.getRequestURI())
                         .timestamp(LocalDateTime.now())
-                        .build());
-    }
+                        .build();
 
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ApiResponse<Object>> handleUnauthorized(
-            UnauthorizedException ex){
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.builder()
-                        .success(false)
-                        .message(ex.getMessage())
-                        .data(null)
-                        .timestamp(LocalDateTime.now())
-                        .build());
+        return ResponseEntity.badRequest().body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Object>> handleException(
-            Exception ex){
+    public ResponseEntity<ErrorResponse> handleException(
+            Exception ex,
+            HttpServletRequest request) {
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.builder()
+        log.error("Unhandled Exception", ex);
+
+        ErrorResponse response =
+                ErrorResponse.builder()
                         .success(false)
-                        .message(ex.getMessage())
-                        .data(null)
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                        .error("Internal Server Error")
+                        .message("Something went wrong.")
+                        .path(request.getRequestURI())
                         .timestamp(LocalDateTime.now())
-                        .build());
+                        .build();
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+
+        String message =
+                ex.getBindingResult()
+                        .getFieldError()
+                        .getDefaultMessage();
+
+        ErrorResponse response =
+                ErrorResponse.builder()
+                        .success(false)
+                        .status(HttpStatus.BAD_REQUEST.value())
+                        .error("Validation Failed")
+                        .message(message)
+                        .path(request.getRequestURI())
+                        .timestamp(LocalDateTime.now())
+                        .build();
+
+        return ResponseEntity.badRequest().body(response);
+    }
 }

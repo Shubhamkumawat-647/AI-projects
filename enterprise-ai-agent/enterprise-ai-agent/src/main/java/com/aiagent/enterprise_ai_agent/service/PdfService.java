@@ -20,7 +20,7 @@ public class PdfService {
     public void upload(
             MultipartFile file,
             Long userId,
-            String conversationId) throws Exception {
+            String conversationId,String fileId) throws Exception {
 
         String text = PdfUtil.extractText(file);
 
@@ -31,7 +31,7 @@ public class PdfService {
                 userId,
                 conversationId,
                 file.getOriginalFilename(),
-                "PDF"
+                "PDF",fileId
         );
     }
 

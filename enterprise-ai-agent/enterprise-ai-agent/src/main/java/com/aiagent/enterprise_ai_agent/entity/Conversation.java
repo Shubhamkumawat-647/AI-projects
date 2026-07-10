@@ -61,4 +61,7 @@ public class Conversation {
     
     private Boolean deleted;
     private LocalDateTime lastActiveAt;
+    
+    @Column(nullable = false)
+    private Integer documentCount = 0;
 }

@@ -19,10 +19,10 @@ public class PdfController {
 
     @PostMapping("/upload")
     public String upload(
-            @RequestParam MultipartFile file,@RequestParam Long userId,@RequestParam String conversationId)
+            @RequestParam MultipartFile file,@RequestParam Long userId,@RequestParam String conversationId,String fileId)
             throws Exception {
 
-        pdfService.upload(file,userId,conversationId);
+        pdfService.upload(file,userId,conversationId,fileId);
 
         return "PDF Uploaded Successfully";
 

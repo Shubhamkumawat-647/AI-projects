@@ -1,13 +1,17 @@
 package com.aiagent.enterprise_ai_agent.controller;
 
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.aiagent.enterprise_ai_agent.entity.DocumentEntity;
 import com.aiagent.enterprise_ai_agent.service.DocumentService;
+import org.springframework.core.io.Resource;
 
 import lombok.RequiredArgsConstructor;
 
@@ -112,6 +116,30 @@ public class DocumentController {
         documentService.deleteDocument(
                 fileId
         );
+
+    }
+    
+    
+    @GetMapping("/{fileId}/download")
+    public ResponseEntity<Resource> download(
+
+            @PathVariable String fileId)
+
+            throws Exception {
+
+        Resource resource =
+                documentService.downloadDocument(
+                        fileId);
+
+        return ResponseEntity.ok()
+
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" +
+                                resource.getFilename() +
+                                "\"")
+
+                .body(resource);
 
     }
 
